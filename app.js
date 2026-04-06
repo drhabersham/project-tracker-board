@@ -120,14 +120,14 @@ function renderCard(task) {
   const fragment = cardTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".task-card");
   const title = fragment.querySelector("h3");
-  const details = fragment.querySelector("p");
+  const details = fragment.querySelector(".task-details-input");
   const dateInput = fragment.querySelector(".task-date-input");
   const dateStatusPill = fragment.querySelector(".date-status-pill");
   const buttons = fragment.querySelectorAll(".icon-button");
 
   card.dataset.taskId = task.id;
   title.textContent = task.title;
-  details.textContent = task.details || "No extra details yet.";
+  details.value = task.details || "";
   dateInput.value = task.dueDate || "";
 
   const dateState = getDateState(task);
@@ -172,6 +172,11 @@ function renderCard(task) {
   dateInput.addEventListener("change", () => {
     task.dueDate = dateInput.value;
     persistAndRender("Task date updated.");
+  });
+
+  details.addEventListener("change", () => {
+    task.details = details.value.trim();
+    persistAndRender("Task description updated.");
   });
 
   return fragment;

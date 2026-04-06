@@ -34,6 +34,7 @@ body {
 
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -121,6 +122,7 @@ h1 {
 }
 
 input,
+textarea,
 select {
   width: 100%;
   border: 1px solid var(--line);
@@ -131,9 +133,15 @@ select {
 }
 
 input:focus,
+textarea:focus,
 select:focus {
   outline: 2px solid rgba(211, 106, 61, 0.35);
   outline-offset: 2px;
+}
+
+textarea {
+  resize: vertical;
+  min-height: 3.25rem;
 }
 
 .primary-button,
@@ -247,8 +255,22 @@ select:focus {
   font-size: 1rem;
 }
 
-.task-card-copy p {
-  margin: 0;
+.details-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.details-field span {
+  font-size: 0.73rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.task-details-input {
+  min-height: 4.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 16px;
   color: var(--muted);
   line-height: 1.45;
   font-size: 0.92rem;
