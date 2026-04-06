@@ -1,6 +1,7 @@
 const STORAGE_KEY = "simple-project-tracker-board-v1";
+const VIEW_MODE_KEY = "simple-project-tracker-view-mode-v1";
 
-const COLUMNS = [
+const DEFAULT_COLUMNS = [
   { id: "todo", title: "To Do", kicker: "Queue" },
   { id: "doing", title: "In Progress", kicker: "Active" },
   { id: "done", title: "Done", kicker: "Wrapped" }
@@ -14,7 +15,12 @@ const defaultBoard = {
       details: "Outline what needs to happen before the project goes live.",
       column: "todo",
       dueDate: getRelativeDate(2),
-      priority: "high"
+      priority: "high",
+      label: "sunset",
+      subtasks: [
+        { id: crypto.randomUUID(), text: "List launch tasks", completed: true },
+        { id: crypto.randomUUID(), text: "Confirm owners", completed: false }
+      ]
     },
     {
       id: crypto.randomUUID(),
@@ -22,7 +28,11 @@ const defaultBoard = {
       details: "Make sure the most important item is in progress this week.",
       column: "doing",
       dueDate: getRelativeDate(0),
-      priority: "medium"
+      priority: "medium",
+      label: "ocean",
+      subtasks: [
+        { id: crypto.randomUUID(), text: "Review deadlines", completed: false }
+      ]
     },
     {
       id: crypto.randomUUID(),
@@ -30,9 +40,12 @@ const defaultBoard = {
       details: "A simple board is ready to start using.",
       column: "done",
       dueDate: getRelativeDate(-1),
-      priority: "low"
+      priority: "low",
+      label: "moss",
+      subtasks: []
     }
-  ]
+  ],
+  columns: DEFAULT_COLUMNS
 };
 
 const boardElement = document.querySelector("#board");
@@ -42,9 +55,12 @@ const detailsInput = document.querySelector("#task-details");
 const columnInput = document.querySelector("#task-column");
 const dateInput = document.querySelector("#task-date");
 const priorityInput = document.querySelector("#task-priority");
+const taskLabelInput = document.querySelector("#task-label");
 const searchInput = document.querySelector("#search-input");
 const priorityFilter = document.querySelector("#priority-filter");
+const labelFilter = document.querySelector("#label-filter");
 const clearFiltersButton = document.querySelector("#clear-filters-button");
+const viewModeSelect = document.querySelector("#view-mode-select");
 const resetButton = document.querySelector("#reset-button");
 const copyLinkButton = document.querySelector("#copy-link-button");
 const exportButton = document.querySelector("#export-button");
@@ -53,12 +69,15 @@ const statusMessage = document.querySelector("#status-message");
 const updatedAtElement = document.querySelector("#updated-at");
 const columnTemplate = document.querySelector("#column-template");
 const cardTemplate = document.querySelector("#card-template");
+const subtaskTemplate = document.querySelector("#subtask-template");
 
 let state = loadState();
 let draggedTaskId = null;
+let viewMode = loadViewMode();
 
 render();
 renderUpdatedAt();
+viewModeSelect.value = viewMode;
 
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -79,7 +98,9 @@ formElement.addEventListener("submit", (event) => {
     details,
     column,
     dueDate,
-    priority
+    priority,
+    label: taskLabelInput.value,
+    subtasks: []
   });
 
   persistAndRender("Task added.");
@@ -146,28 +167,44 @@ priorityFilter.addEventListener("change", () => {
   render();
 });
 
+labelFilter.addEventListener("change", () => {
+  render();
+});
+
 clearFiltersButton.addEventListener("click", () => {
   searchInput.value = "";
   priorityFilter.value = "all";
+  labelFilter.value = "all";
+  render();
+});
+
+viewModeSelect.addEventListener("change", () => {
+  viewMode = viewModeSelect.value;
+  localStorage.setItem(VIEW_MODE_KEY, viewMode);
   render();
 });
 
 function render() {
   boardElement.innerHTML = "";
+  boardElement.dataset.viewMode = viewMode;
   const filters = getActiveFilters();
 
-  for (const column of COLUMNS) {
+  for (const column of state.columns) {
     const fragment = columnTemplate.content.cloneNode(true);
     const section = fragment.querySelector(".column");
     const kicker = fragment.querySelector(".column-kicker");
-    const heading = fragment.querySelector("h2");
+    const headingInput = fragment.querySelector(".column-title-input");
     const taskCount = fragment.querySelector(".task-count");
     const dropzone = fragment.querySelector(".column-dropzone");
     const emptyMessage = fragment.querySelector(".empty-column-message");
 
     section.dataset.column = column.id;
     kicker.textContent = column.kicker;
-    heading.textContent = column.title;
+    headingInput.value = column.title;
+    headingInput.addEventListener("change", () => {
+      column.title = headingInput.value.trim() || "Untitled";
+      persistAndRender("Column renamed.");
+    });
 
     const tasks = state.tasks.filter(
       (task) => task.column === column.id && taskMatchesFilters(task, filters)
@@ -192,23 +229,32 @@ function render() {
 function renderCard(task) {
   const fragment = cardTemplate.content.cloneNode(true);
   const card = fragment.querySelector(".task-card");
-  const title = fragment.querySelector("h3");
+  const titleInput = fragment.querySelector(".task-title-input");
   const details = fragment.querySelector(".task-details-input");
   const dateInput = fragment.querySelector(".task-date-input");
   const priorityInput = fragment.querySelector(".task-priority-input");
+  const labelInput = fragment.querySelector(".task-label-input");
+  const labelChip = fragment.querySelector(".task-label-chip");
   const dateStatusPill = fragment.querySelector(".date-status-pill");
+  const subtasksList = fragment.querySelector(".subtasks-list");
+  const subtasksCount = fragment.querySelector(".subtasks-count");
+  const subtaskInput = fragment.querySelector(".subtask-input");
+  const subtaskAddButton = fragment.querySelector(".subtask-add-button");
   const buttons = fragment.querySelectorAll(".icon-button");
 
   card.dataset.taskId = task.id;
-  title.textContent = task.title;
+  titleInput.value = task.title;
   details.value = task.details || "";
   dateInput.value = task.dueDate || "";
   priorityInput.value = task.priority || "medium";
   priorityInput.dataset.priority = priorityInput.value;
+  labelInput.value = task.label || "";
+  renderLabelChip(task.label || "", labelChip);
 
   const dateState = getDateState(task);
   dateStatusPill.textContent = dateState.label;
   dateStatusPill.dataset.tone = dateState.tone;
+  renderSubtasks(task, subtasksList, subtasksCount);
 
   card.addEventListener("dragstart", () => {
     draggedTaskId = task.id;
@@ -232,14 +278,14 @@ function renderCard(task) {
       }
 
       if (action === "move-left" || action === "move-right") {
-        const currentIndex = COLUMNS.findIndex((column) => column.id === task.column);
+        const currentIndex = state.columns.findIndex((column) => column.id === task.column);
         const nextIndex = action === "move-left" ? currentIndex - 1 : currentIndex + 1;
 
-        if (nextIndex < 0 || nextIndex >= COLUMNS.length) {
+        if (nextIndex < 0 || nextIndex >= state.columns.length) {
           return;
         }
 
-        task.column = COLUMNS[nextIndex].id;
+        task.column = state.columns[nextIndex].id;
         persistAndRender("Task moved.");
       }
     });
@@ -250,15 +296,49 @@ function renderCard(task) {
     persistAndRender("Task date updated.");
   });
 
+  titleInput.addEventListener("change", () => {
+    task.title = titleInput.value.trim() || "Untitled task";
+    persistAndRender("Task title updated.");
+  });
+
   priorityInput.addEventListener("change", () => {
     task.priority = priorityInput.value;
     priorityInput.dataset.priority = priorityInput.value;
     persistAndRender("Task priority updated.");
   });
 
+  labelInput.addEventListener("change", () => {
+    task.label = labelInput.value;
+    renderLabelChip(task.label, labelChip);
+    persistAndRender("Task label updated.");
+  });
+
   details.addEventListener("change", () => {
     task.details = details.value.trim();
     persistAndRender("Task description updated.");
+  });
+
+  subtaskAddButton.addEventListener("click", () => {
+    const text = subtaskInput.value.trim();
+
+    if (!text) {
+      return;
+    }
+
+    task.subtasks.push({
+      id: crypto.randomUUID(),
+      text,
+      completed: false
+    });
+
+    persistAndRender("Checklist item added.");
+  });
+
+  subtaskInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      subtaskAddButton.click();
+    }
   });
 
   return fragment;
@@ -365,7 +445,8 @@ function normalizeState(candidate) {
       details: task.details || "",
       column: COLUMNS.some((column) => column.id === task.column) ? task.column : "todo",
       dueDate: isValidDate(task.dueDate) ? task.dueDate : "",
-      priority: isValidPriority(task.priority) ? task.priority : "medium"
+      priority: isValidPriority(task.priority) ? task.priority : "medium",
+      subtasks: normalizeSubtasks(task.subtasks)
     })),
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString()
   };
@@ -468,4 +549,56 @@ function makeBoardState(tasks) {
     tasks,
     updatedAt: new Date().toISOString()
   };
+}
+
+function renderSubtasks(task, container, counter) {
+  container.innerHTML = "";
+  const subtasks = normalizeSubtasks(task.subtasks);
+  task.subtasks = subtasks;
+  const completedCount = subtasks.filter((subtask) => subtask.completed).length;
+  counter.textContent = subtasks.length ? `${completedCount}/${subtasks.length}` : "0/0";
+
+  for (const subtask of subtasks) {
+    const fragment = subtaskTemplate.content.cloneNode(true);
+    const item = fragment.querySelector(".subtask-item");
+    const checkbox = fragment.querySelector(".subtask-checkbox");
+    const text = fragment.querySelector(".subtask-text");
+    const deleteButton = fragment.querySelector(".subtask-delete-button");
+
+    item.dataset.complete = String(subtask.completed);
+    checkbox.checked = subtask.completed;
+    text.textContent = subtask.text;
+
+    checkbox.addEventListener("change", () => {
+      subtask.completed = checkbox.checked;
+      persistAndRender("Checklist updated.");
+    });
+
+    deleteButton.addEventListener("click", () => {
+      task.subtasks = task.subtasks.filter((entry) => entry.id !== subtask.id);
+      persistAndRender("Checklist item removed.");
+    });
+
+    container.appendChild(fragment);
+  }
+}
+
+function normalizeSubtasks(candidate) {
+  if (!Array.isArray(candidate)) {
+    return [];
+  }
+
+  return candidate
+    .filter((item) => item && typeof item.text === "string")
+    .map((item) => ({
+      id: item.id || crypto.randomUUID(),
+      text: item.text.trim(),
+      completed: Boolean(item.completed)
+    }))
+    .filter((item) => item.text);
+}
+
+function loadViewMode() {
+  const saved = localStorage.getItem(VIEW_MODE_KEY);
+  return saved === "list" ? "list" : "board";
 }

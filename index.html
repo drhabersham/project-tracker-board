@@ -61,6 +61,14 @@
           <button id="clear-filters-button" class="ghost-button" type="button">
             Clear filters
           </button>
+
+          <label>
+            <span>View</span>
+            <select id="view-mode-select">
+              <option value="board">Board</option>
+              <option value="list">Compact list</option>
+            </select>
+          </label>
         </div>
 
         <form id="task-form" class="task-form">
@@ -137,7 +145,7 @@
       <article class="task-card" draggable="true">
         <div class="task-card-copy">
           <div class="task-title-row">
-            <h3></h3>
+            <input class="task-title-input" type="text" maxlength="80" aria-label="Task title" />
             <select class="task-priority-input" aria-label="Task priority">
               <option value="high">High</option>
               <option value="medium">Medium</option>
@@ -156,6 +164,17 @@
           </label>
           <span class="date-status-pill"></span>
         </div>
+        <div class="subtasks">
+          <div class="subtasks-header">
+            <span>Checklist</span>
+            <span class="subtasks-count"></span>
+          </div>
+          <div class="subtasks-list"></div>
+          <div class="subtask-form">
+            <input class="subtask-input" type="text" maxlength="80" placeholder="Add a checklist item" />
+            <button class="ghost-button subtask-add-button" type="button">Add</button>
+          </div>
+        </div>
         <div class="task-card-actions">
           <button class="icon-button" data-action="move-left" aria-label="Move left">
             ←
@@ -168,6 +187,16 @@
           </button>
         </div>
       </article>
+    </template>
+
+    <template id="subtask-template">
+      <label class="subtask-item">
+        <input class="subtask-checkbox" type="checkbox" />
+        <span class="subtask-text"></span>
+        <button class="subtask-delete-button" type="button" aria-label="Delete checklist item">
+          ×
+        </button>
+      </label>
     </template>
     <script src="./app.js"></script>
   </body>

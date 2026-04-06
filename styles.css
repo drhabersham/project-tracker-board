@@ -118,7 +118,7 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: 1.6fr 0.8fr auto;
+  grid-template-columns: 1.6fr 0.8fr auto 0.8fr;
   gap: 0.9rem;
   margin-bottom: 1rem;
   align-items: end;
@@ -212,6 +212,18 @@ textarea {
   margin-top: 1.5rem;
 }
 
+.board[data-view-mode="list"] {
+  grid-template-columns: 1fr;
+}
+
+.board[data-view-mode="list"] .column {
+  min-height: auto;
+}
+
+.board[data-view-mode="list"] .column-dropzone {
+  min-height: auto;
+}
+
 .column {
   border-radius: 28px;
   padding: 1rem;
@@ -286,16 +298,26 @@ textarea {
   cursor: grabbing;
 }
 
-.task-card-copy h3 {
-  margin: 0 0 0.35rem;
-  font-size: 1rem;
-}
-
 .task-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+.task-title-input {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.task-title-input:focus {
+  outline: none;
+  box-shadow: inset 0 -2px 0 rgba(211, 106, 61, 0.5);
 }
 
 .task-priority-input {
@@ -400,6 +422,76 @@ textarea {
 .date-status-pill[data-tone="done"] {
   background: var(--done);
   color: #264030;
+}
+
+.subtasks {
+  display: grid;
+  gap: 0.65rem;
+  padding-top: 0.2rem;
+}
+
+.subtasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.subtasks-list {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.subtask-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.5rem 0.7rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(58, 45, 30, 0.08);
+}
+
+.subtask-checkbox {
+  width: 1rem;
+  height: 1rem;
+}
+
+.subtask-text {
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+
+.subtask-item[data-complete="true"] .subtask-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.subtask-delete-button {
+  border: 0;
+  background: transparent;
+  color: var(--accent-deep);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.subtask-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.subtask-input {
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+}
+
+.subtask-add-button {
+  padding: 0.7rem 1rem;
 }
 
 .task-card-actions {
