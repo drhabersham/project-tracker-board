@@ -13,21 +13,24 @@ const defaultBoard = {
       title: "Plan launch checklist",
       details: "Outline what needs to happen before the project goes live.",
       column: "todo",
-      dueDate: getRelativeDate(2)
+      dueDate: getRelativeDate(2),
+      priority: "high"
     },
     {
       id: crypto.randomUUID(),
       title: "Review current priorities",
       details: "Make sure the most important item is in progress this week.",
       column: "doing",
-      dueDate: getRelativeDate(0)
+      dueDate: getRelativeDate(0),
+      priority: "medium"
     },
     {
       id: crypto.randomUUID(),
       title: "Create tracker",
       details: "A simple board is ready to start using.",
       column: "done",
-      dueDate: getRelativeDate(-1)
+      dueDate: getRelativeDate(-1),
+      priority: "low"
     }
   ]
 };
@@ -38,11 +41,16 @@ const titleInput = document.querySelector("#task-title");
 const detailsInput = document.querySelector("#task-details");
 const columnInput = document.querySelector("#task-column");
 const dateInput = document.querySelector("#task-date");
+const priorityInput = document.querySelector("#task-priority");
+const searchInput = document.querySelector("#search-input");
+const priorityFilter = document.querySelector("#priority-filter");
+const clearFiltersButton = document.querySelector("#clear-filters-button");
 const resetButton = document.querySelector("#reset-button");
 const copyLinkButton = document.querySelector("#copy-link-button");
 const exportButton = document.querySelector("#export-button");
 const importInput = document.querySelector("#import-input");
 const statusMessage = document.querySelector("#status-message");
+const updatedAtElement = document.querySelector("#updated-at");
 const columnTemplate = document.querySelector("#column-template");
 const cardTemplate = document.querySelector("#card-template");
 
@@ -50,6 +58,7 @@ let state = loadState();
 let draggedTaskId = null;
 
 render();
+renderUpdatedAt();
 
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -58,6 +67,7 @@ formElement.addEventListener("submit", (event) => {
   const details = detailsInput.value.trim();
   const column = columnInput.value;
   const dueDate = dateInput.value;
+  const priority = priorityInput.value;
 
   if (!title) {
     return;
@@ -68,7 +78,8 @@ formElement.addEventListener("submit", (event) => {
     title,
     details,
     column,
-    dueDate
+    dueDate,
+    priority
   });
 
   persistAndRender("Task added.");
@@ -118,6 +129,7 @@ importInput.addEventListener("change", async (event) => {
     state = importedState;
     saveState();
     render();
+    renderUpdatedAt();
     setStatus("Board imported.");
   } catch {
     setStatus("That file could not be imported.");
@@ -126,8 +138,23 @@ importInput.addEventListener("change", async (event) => {
   }
 });
 
+searchInput.addEventListener("input", () => {
+  render();
+});
+
+priorityFilter.addEventListener("change", () => {
+  render();
+});
+
+clearFiltersButton.addEventListener("click", () => {
+  searchInput.value = "";
+  priorityFilter.value = "all";
+  render();
+});
+
 function render() {
   boardElement.innerHTML = "";
+  const filters = getActiveFilters();
 
   for (const column of COLUMNS) {
     const fragment = columnTemplate.content.cloneNode(true);
@@ -136,17 +163,26 @@ function render() {
     const heading = fragment.querySelector("h2");
     const taskCount = fragment.querySelector(".task-count");
     const dropzone = fragment.querySelector(".column-dropzone");
+    const emptyMessage = fragment.querySelector(".empty-column-message");
 
     section.dataset.column = column.id;
     kicker.textContent = column.kicker;
     heading.textContent = column.title;
 
-    const tasks = state.tasks.filter((task) => task.column === column.id);
+    const tasks = state.tasks.filter(
+      (task) => task.column === column.id && taskMatchesFilters(task, filters)
+    );
     taskCount.textContent = `${tasks.length}`;
 
     for (const task of tasks) {
       dropzone.appendChild(renderCard(task));
     }
+
+    emptyMessage.textContent = tasks.length
+      ? ""
+      : filters.hasFilters
+        ? "No matching tasks in this column."
+        : "Nothing here yet. Add a task to get started.";
 
     wireDropzone(dropzone, column.id);
     boardElement.appendChild(fragment);
@@ -159,6 +195,7 @@ function renderCard(task) {
   const title = fragment.querySelector("h3");
   const details = fragment.querySelector(".task-details-input");
   const dateInput = fragment.querySelector(".task-date-input");
+  const priorityInput = fragment.querySelector(".task-priority-input");
   const dateStatusPill = fragment.querySelector(".date-status-pill");
   const buttons = fragment.querySelectorAll(".icon-button");
 
@@ -166,6 +203,8 @@ function renderCard(task) {
   title.textContent = task.title;
   details.value = task.details || "";
   dateInput.value = task.dueDate || "";
+  priorityInput.value = task.priority || "medium";
+  priorityInput.dataset.priority = priorityInput.value;
 
   const dateState = getDateState(task);
   dateStatusPill.textContent = dateState.label;
@@ -211,6 +250,12 @@ function renderCard(task) {
     persistAndRender("Task date updated.");
   });
 
+  priorityInput.addEventListener("change", () => {
+    task.priority = priorityInput.value;
+    priorityInput.dataset.priority = priorityInput.value;
+    persistAndRender("Task priority updated.");
+  });
+
   details.addEventListener("change", () => {
     task.details = details.value.trim();
     persistAndRender("Task description updated.");
@@ -247,6 +292,7 @@ function persistAndRender(message) {
   state.updatedAt = new Date().toISOString();
   saveState();
   render();
+  renderUpdatedAt();
   setStatus(message);
 }
 
@@ -303,6 +349,10 @@ function setStatus(message) {
   statusMessage.textContent = message;
 }
 
+function renderUpdatedAt() {
+  updatedAtElement.textContent = `Last updated ${formatUpdatedAt(state.updatedAt)}`;
+}
+
 function normalizeState(candidate) {
   if (!candidate || !Array.isArray(candidate.tasks)) {
     return makeBoardState(structuredClone(defaultBoard).tasks);
@@ -314,7 +364,8 @@ function normalizeState(candidate) {
       title: task.title || "Untitled task",
       details: task.details || "",
       column: COLUMNS.some((column) => column.id === task.column) ? task.column : "todo",
-      dueDate: isValidDate(task.dueDate) ? task.dueDate : ""
+      dueDate: isValidDate(task.dueDate) ? task.dueDate : "",
+      priority: isValidPriority(task.priority) ? task.priority : "medium"
     })),
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString()
   };
@@ -375,6 +426,41 @@ function getRelativeDate(offsetDays) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
   return date.toISOString().slice(0, 10);
+}
+
+function getActiveFilters() {
+  const query = searchInput.value.trim().toLowerCase();
+  const priority = priorityFilter.value;
+
+  return {
+    query,
+    priority,
+    hasFilters: Boolean(query || priority !== "all")
+  };
+}
+
+function taskMatchesFilters(task, filters) {
+  const matchesPriority = filters.priority === "all" || task.priority === filters.priority;
+  const haystack = `${task.title} ${task.details}`.toLowerCase();
+  const matchesQuery = !filters.query || haystack.includes(filters.query);
+  return matchesPriority && matchesQuery;
+}
+
+function isValidPriority(value) {
+  return value === "high" || value === "medium" || value === "low";
+}
+
+function formatUpdatedAt(value) {
+  if (!value) {
+    return "just now";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(new Date(value));
 }
 
 function makeBoardState(tasks) {

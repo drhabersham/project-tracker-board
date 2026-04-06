@@ -23,6 +23,7 @@
             It saves on your device and can generate a share link when you want
             to open the same board elsewhere.
           </p>
+          <p id="updated-at" class="updated-at"></p>
         </div>
 
         <div class="hero-actions">
@@ -41,6 +42,27 @@
       </header>
 
       <section class="toolbar">
+        <div class="filters">
+          <label>
+            <span>Search</span>
+            <input id="search-input" type="search" placeholder="Search tasks or descriptions" />
+          </label>
+
+          <label>
+            <span>Priority</span>
+            <select id="priority-filter">
+              <option value="all">All priorities</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
+          <button id="clear-filters-button" class="ghost-button" type="button">
+            Clear filters
+          </button>
+        </div>
+
         <form id="task-form" class="task-form">
           <label>
             <span>Task</span>
@@ -79,6 +101,15 @@
             <input id="task-date" name="date" type="date" />
           </label>
 
+          <label>
+            <span>Priority</span>
+            <select id="task-priority" name="priority">
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+
           <button type="submit" class="primary-button">Add task</button>
         </form>
       </section>
@@ -98,13 +129,21 @@
           <span class="task-count"></span>
         </div>
         <div class="column-dropzone"></div>
+        <p class="empty-column-message"></p>
       </section>
     </template>
 
     <template id="card-template">
       <article class="task-card" draggable="true">
         <div class="task-card-copy">
-          <h3></h3>
+          <div class="task-title-row">
+            <h3></h3>
+            <select class="task-priority-input" aria-label="Task priority">
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
           <label class="details-field">
             <span>Description</span>
             <textarea class="task-details-input" rows="3" maxlength="280"></textarea>
