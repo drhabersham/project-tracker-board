@@ -78,6 +78,7 @@ h1 {
 
 .hero-actions,
 .toolbar,
+.sync-panel,
 .column {
   backdrop-filter: blur(18px);
   background: var(--paper);
@@ -86,7 +87,8 @@ h1 {
 }
 
 .hero-actions,
-.toolbar {
+.toolbar,
+.sync-panel {
   border-radius: 24px;
   padding: 1rem;
 }
@@ -102,6 +104,32 @@ h1 {
   margin: 0;
   font-size: 0.9rem;
   color: var(--muted);
+}
+
+.sync-panel {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.sync-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+}
+
+.sync-copy,
+.sync-status {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.sync-actions {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: start;
 }
 
 .task-form {
@@ -355,6 +383,7 @@ textarea {
 
 @media (max-width: 900px) {
   .hero,
+  .sync-panel,
   .task-form,
   .board {
     grid-template-columns: 1fr;

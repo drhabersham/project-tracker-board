@@ -34,6 +34,24 @@
         </div>
       </header>
 
+      <section class="sync-panel">
+        <div>
+          <p class="eyebrow">Cross-device sync</p>
+          <h2 class="sync-title">Keep one board in sync everywhere.</h2>
+          <p class="sync-copy">
+            Local saving always stays on. When sync is configured, your board
+            will also refresh across devices automatically.
+          </p>
+        </div>
+
+        <div class="sync-actions">
+          <button id="sync-now-button" class="ghost-button" type="button">
+            Sync now
+          </button>
+          <p id="sync-status" class="sync-status" aria-live="polite"></p>
+        </div>
+      </section>
+
       <section class="toolbar">
         <form id="task-form" class="task-form">
           <label>
@@ -123,6 +141,7 @@
       </article>
     </template>
 
+    <script src="./sync-config.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

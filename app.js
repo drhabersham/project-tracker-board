@@ -1,4 +1,6 @@
 const STORAGE_KEY = "simple-project-tracker-board-v1";
+const SYNC_CONFIG = window.TRACKER_SYNC_CONFIG || { enabled: false };
+const SYNC_POLL_INTERVAL_MS = SYNC_CONFIG.pollIntervalMs || 15000;
 
 const COLUMNS = [
   { id: "todo", title: "To Do", kicker: "Queue" },
@@ -40,14 +42,21 @@ const columnInput = document.querySelector("#task-column");
 const dateInput = document.querySelector("#task-date");
 const resetButton = document.querySelector("#reset-button");
 const copyLinkButton = document.querySelector("#copy-link-button");
+const syncNowButton = document.querySelector("#sync-now-button");
 const statusMessage = document.querySelector("#status-message");
+const syncStatus = document.querySelector("#sync-status");
 const columnTemplate = document.querySelector("#column-template");
 const cardTemplate = document.querySelector("#card-template");
 
 let state = loadState();
 let draggedTaskId = null;
+let syncTimer = null;
+let syncInFlight = false;
+let lastRemoteUpdatedAt = state.updatedAt || "";
 
 render();
+updateSyncStatus();
+startSync();
 
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -75,7 +84,7 @@ formElement.addEventListener("submit", (event) => {
 });
 
 resetButton.addEventListener("click", () => {
-  state = structuredClone(defaultBoard);
+  state = makeBoardState(structuredClone(defaultBoard).tasks);
   persistAndRender("Board reset to the starter layout.");
 });
 
@@ -86,6 +95,21 @@ copyLinkButton.addEventListener("click", async () => {
     setStatus("Share link copied. Open it on another device to load this board.");
   } catch {
     setStatus("Could not copy automatically. Your browser may block clipboard access.");
+  }
+});
+
+syncNowButton.addEventListener("click", async () => {
+  if (!isSyncEnabled()) {
+    updateSyncStatus("Sync not configured yet. Add your backend values in sync-config.js.");
+    return;
+  }
+
+  await syncBoard({ reason: "manual" });
+});
+
+window.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && isSyncEnabled()) {
+    syncBoard({ reason: "visible" });
   }
 });
 
@@ -210,6 +234,7 @@ function persistAndRender(message) {
   saveState();
   render();
   setStatus(message);
+  queueSync();
 }
 
 function saveState() {
@@ -228,13 +253,13 @@ function loadState() {
   const saved = localStorage.getItem(STORAGE_KEY);
 
   if (!saved) {
-    return structuredClone(defaultBoard);
+    return makeBoardState(structuredClone(defaultBoard).tasks);
   }
 
   try {
     return normalizeState(JSON.parse(saved));
   } catch {
-    return structuredClone(defaultBoard);
+    return makeBoardState(structuredClone(defaultBoard).tasks);
   }
 }
 
@@ -267,7 +292,7 @@ function setStatus(message) {
 
 function normalizeState(candidate) {
   if (!candidate || !Array.isArray(candidate.tasks)) {
-    return structuredClone(defaultBoard);
+    return makeBoardState(structuredClone(defaultBoard).tasks);
   }
 
   return {
@@ -277,7 +302,8 @@ function normalizeState(candidate) {
       details: task.details || "",
       column: COLUMNS.some((column) => column.id === task.column) ? task.column : "todo",
       dueDate: isValidDate(task.dueDate) ? task.dueDate : ""
-    }))
+    })),
+    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString()
   };
 }
 
@@ -336,4 +362,161 @@ function getRelativeDate(offsetDays) {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
   return date.toISOString().slice(0, 10);
+}
+
+function makeBoardState(tasks) {
+  return {
+    tasks,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function isSyncEnabled() {
+  return Boolean(
+    SYNC_CONFIG.enabled &&
+      SYNC_CONFIG.supabaseUrl &&
+      SYNC_CONFIG.supabaseAnonKey &&
+      SYNC_CONFIG.boardId
+  );
+}
+
+function queueSync() {
+  state.updatedAt = new Date().toISOString();
+  saveState();
+
+  if (!isSyncEnabled()) {
+    updateSyncStatus("Local mode only. Add backend settings in sync-config.js to enable auto sync.");
+    return;
+  }
+
+  window.clearTimeout(syncTimer);
+  syncTimer = window.setTimeout(() => {
+    syncBoard({ reason: "auto" });
+  }, 800);
+}
+
+function startSync() {
+  if (!isSyncEnabled()) {
+    updateSyncStatus("Local mode only. Add backend settings in sync-config.js to enable auto sync.");
+    return;
+  }
+
+  updateSyncStatus("Sync is configured. Checking for the latest board...");
+  syncBoard({ reason: "startup" });
+  window.setInterval(() => {
+    syncBoard({ reason: "poll" });
+  }, SYNC_POLL_INTERVAL_MS);
+}
+
+async function syncBoard({ reason }) {
+  if (!isSyncEnabled() || syncInFlight) {
+    return;
+  }
+
+  syncInFlight = true;
+  syncNowButton.disabled = true;
+  updateSyncStatus(reason === "manual" ? "Syncing now..." : "Checking for updates...");
+
+  try {
+    const remoteRecord = await fetchRemoteBoard();
+
+    if (!remoteRecord) {
+      await pushRemoteBoard();
+      lastRemoteUpdatedAt = state.updatedAt;
+      updateSyncStatus(`Sync is on. Board uploaded ${formatSyncTime(new Date())}.`);
+      return;
+    }
+
+    const remoteUpdatedAt = remoteRecord.updated_at || "";
+    const remoteBoard = normalizeState(remoteRecord.board || {});
+
+    if (remoteUpdatedAt > (state.updatedAt || "")) {
+      state = remoteBoard;
+      lastRemoteUpdatedAt = remoteUpdatedAt;
+      saveState();
+      render();
+      updateSyncStatus(`Pulled newer changes ${formatSyncTime(new Date(remoteUpdatedAt))}.`);
+      return;
+    }
+
+    if ((state.updatedAt || "") > remoteUpdatedAt || !boardsMatch(remoteBoard, state)) {
+      await pushRemoteBoard();
+      lastRemoteUpdatedAt = state.updatedAt;
+      updateSyncStatus(`Changes synced ${formatSyncTime(new Date())}.`);
+      return;
+    }
+
+    lastRemoteUpdatedAt = remoteUpdatedAt;
+    updateSyncStatus(
+      `Everything is synced${lastRemoteUpdatedAt ? ` as of ${formatSyncTime(new Date(lastRemoteUpdatedAt))}` : "."}`
+    );
+  } catch (error) {
+    updateSyncStatus(`Sync issue: ${error.message}`);
+  } finally {
+    syncInFlight = false;
+    syncNowButton.disabled = false;
+  }
+}
+
+async function fetchRemoteBoard() {
+  const url = new URL(`${SYNC_CONFIG.supabaseUrl}/rest/v1/${SYNC_CONFIG.table || "boards"}`);
+  url.searchParams.set("id", `eq.${SYNC_CONFIG.boardId}`);
+  url.searchParams.set("select", "id,board,updated_at");
+
+  const response = await fetch(url, {
+    headers: createSyncHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error(`could not load remote board (${response.status})`);
+  }
+
+  const rows = await response.json();
+  return rows[0] || null;
+}
+
+async function pushRemoteBoard() {
+  const response = await fetch(`${SYNC_CONFIG.supabaseUrl}/rest/v1/${SYNC_CONFIG.table || "boards"}`, {
+    method: "POST",
+    headers: {
+      ...createSyncHeaders(),
+      "Content-Type": "application/json",
+      Prefer: "resolution=merge-duplicates"
+    },
+    body: JSON.stringify([
+      {
+        id: SYNC_CONFIG.boardId,
+        board: state,
+        updated_at: state.updatedAt
+      }
+    ])
+  });
+
+  if (!response.ok) {
+    throw new Error(`could not save remote board (${response.status})`);
+  }
+}
+
+function createSyncHeaders() {
+  return {
+    apikey: SYNC_CONFIG.supabaseAnonKey,
+    Authorization: `Bearer ${SYNC_CONFIG.supabaseAnonKey}`
+  };
+}
+
+function boardsMatch(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function updateSyncStatus(message) {
+  syncStatus.textContent = message || syncStatus.textContent || "Local mode only.";
+}
+
+function formatSyncTime(date) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(date);
 }
