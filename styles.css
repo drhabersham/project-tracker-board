@@ -14,6 +14,11 @@
   --date-today: #d9992f;
   --date-upcoming: #4f8f66;
   --date-empty: #8a8174;
+  --label-sunset: #d36a3d;
+  --label-ocean: #457b9d;
+  --label-moss: #5d8a54;
+  --label-berry: #a04d74;
+  --label-slate: #68727f;
   --shadow: 0 20px 45px rgba(92, 67, 36, 0.12);
 }
 
@@ -118,7 +123,7 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: 1.6fr 0.8fr auto 0.8fr;
+  grid-template-columns: 1.25fr 0.8fr 0.8fr auto 0.8fr;
   gap: 0.9rem;
   margin-bottom: 1rem;
   align-items: end;
@@ -136,7 +141,7 @@ h1 {
 
 .task-form {
   display: grid;
-  grid-template-columns: 1fr 1.3fr 0.8fr 0.9fr 0.8fr auto;
+  grid-template-columns: 1fr 1.2fr 0.8fr 0.9fr 0.8fr 0.9fr auto;
   gap: 0.9rem;
   align-items: end;
 }
@@ -249,9 +254,19 @@ textarea {
   margin-bottom: 1rem;
 }
 
-.column-header h2 {
-  margin: 0;
+.column-title-input {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
   font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.column-title-input:focus {
+  outline: none;
+  box-shadow: inset 0 -2px 0 rgba(211, 106, 61, 0.5);
 }
 
 .task-count {
@@ -353,6 +368,57 @@ textarea {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+.task-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.task-label-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.9rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: white;
+}
+
+.task-label-chip[data-label=""] {
+  display: none;
+}
+
+.task-label-chip[data-label="sunset"] {
+  background: var(--label-sunset);
+}
+
+.task-label-chip[data-label="ocean"] {
+  background: var(--label-ocean);
+}
+
+.task-label-chip[data-label="moss"] {
+  background: var(--label-moss);
+}
+
+.task-label-chip[data-label="berry"] {
+  background: var(--label-berry);
+}
+
+.task-label-chip[data-label="slate"] {
+  background: var(--label-slate);
+}
+
+.task-label-input {
+  width: auto;
+  min-width: 8rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 999px;
 }
 
 .task-details-input {

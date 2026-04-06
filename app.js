@@ -438,14 +438,18 @@ function normalizeState(candidate) {
     return makeBoardState(structuredClone(defaultBoard).tasks);
   }
 
+  const columns = normalizeColumns(candidate.columns);
+
   return {
+    columns,
     tasks: candidate.tasks.map((task) => ({
       id: task.id || crypto.randomUUID(),
       title: task.title || "Untitled task",
       details: task.details || "",
-      column: COLUMNS.some((column) => column.id === task.column) ? task.column : "todo",
+      column: columns.some((column) => column.id === task.column) ? task.column : "todo",
       dueDate: isValidDate(task.dueDate) ? task.dueDate : "",
       priority: isValidPriority(task.priority) ? task.priority : "medium",
+      label: isValidLabel(task.label) ? task.label : "",
       subtasks: normalizeSubtasks(task.subtasks)
     })),
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : new Date().toISOString()
@@ -512,19 +516,24 @@ function getRelativeDate(offsetDays) {
 function getActiveFilters() {
   const query = searchInput.value.trim().toLowerCase();
   const priority = priorityFilter.value;
+  const label = labelFilter.value;
 
   return {
     query,
     priority,
-    hasFilters: Boolean(query || priority !== "all")
+    label,
+    hasFilters: Boolean(query || priority !== "all" || label !== "all")
   };
 }
 
 function taskMatchesFilters(task, filters) {
   const matchesPriority = filters.priority === "all" || task.priority === filters.priority;
+  const matchesLabel =
+    filters.label === "all" ||
+    (filters.label === "none" ? !task.label : task.label === filters.label);
   const haystack = `${task.title} ${task.details}`.toLowerCase();
   const matchesQuery = !filters.query || haystack.includes(filters.query);
-  return matchesPriority && matchesQuery;
+  return matchesPriority && matchesLabel && matchesQuery;
 }
 
 function isValidPriority(value) {
@@ -546,6 +555,7 @@ function formatUpdatedAt(value) {
 
 function makeBoardState(tasks) {
   return {
+    columns: structuredClone(DEFAULT_COLUMNS),
     tasks,
     updatedAt: new Date().toISOString()
   };
@@ -601,4 +611,28 @@ function normalizeSubtasks(candidate) {
 function loadViewMode() {
   const saved = localStorage.getItem(VIEW_MODE_KEY);
   return saved === "list" ? "list" : "board";
+}
+
+function normalizeColumns(candidate) {
+  if (!Array.isArray(candidate) || candidate.length !== DEFAULT_COLUMNS.length) {
+    return structuredClone(DEFAULT_COLUMNS);
+  }
+
+  return DEFAULT_COLUMNS.map((column, index) => ({
+    id: column.id,
+    kicker: column.kicker,
+    title:
+      typeof candidate[index]?.title === "string" && candidate[index].title.trim()
+        ? candidate[index].title.trim()
+        : column.title
+  }));
+}
+
+function isValidLabel(value) {
+  return value === "" || value === "sunset" || value === "ocean" || value === "moss" || value === "berry" || value === "slate";
+}
+
+function renderLabelChip(value, element) {
+  element.dataset.label = value;
+  element.textContent = value || "";
 }

@@ -58,6 +58,19 @@
             </select>
           </label>
 
+          <label>
+            <span>Label</span>
+            <select id="label-filter">
+              <option value="all">All labels</option>
+              <option value="none">No label</option>
+              <option value="sunset">Sunset</option>
+              <option value="ocean">Ocean</option>
+              <option value="moss">Moss</option>
+              <option value="berry">Berry</option>
+              <option value="slate">Slate</option>
+            </select>
+          </label>
+
           <button id="clear-filters-button" class="ghost-button" type="button">
             Clear filters
           </button>
@@ -118,6 +131,18 @@
             </select>
           </label>
 
+          <label>
+            <span>Color label</span>
+            <select id="task-label" name="label">
+              <option value="">No label</option>
+              <option value="sunset">Sunset</option>
+              <option value="ocean">Ocean</option>
+              <option value="moss">Moss</option>
+              <option value="berry">Berry</option>
+              <option value="slate">Slate</option>
+            </select>
+          </label>
+
           <button type="submit" class="primary-button">Add task</button>
         </form>
       </section>
@@ -132,7 +157,7 @@
         <div class="column-header">
           <div>
             <p class="column-kicker"></p>
-            <h2></h2>
+            <input class="column-title-input" type="text" maxlength="24" aria-label="Column title" />
           </div>
           <span class="task-count"></span>
         </div>
@@ -156,6 +181,17 @@
             <span>Description</span>
             <textarea class="task-details-input" rows="3" maxlength="280"></textarea>
           </label>
+          <div class="task-label-row">
+            <span class="task-label-chip"></span>
+            <select class="task-label-input" aria-label="Task color label">
+              <option value="">No label</option>
+              <option value="sunset">Sunset</option>
+              <option value="ocean">Ocean</option>
+              <option value="moss">Moss</option>
+              <option value="berry">Berry</option>
+              <option value="slate">Slate</option>
+            </select>
+          </div>
         </div>
         <div class="task-meta">
           <label class="date-field">
