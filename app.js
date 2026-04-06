@@ -1,6 +1,4 @@
 const STORAGE_KEY = "simple-project-tracker-board-v1";
-const SYNC_CONFIG = window.TRACKER_SYNC_CONFIG || { enabled: false };
-const SYNC_POLL_INTERVAL_MS = SYNC_CONFIG.pollIntervalMs || 15000;
 
 const COLUMNS = [
   { id: "todo", title: "To Do", kicker: "Queue" },
@@ -42,21 +40,16 @@ const columnInput = document.querySelector("#task-column");
 const dateInput = document.querySelector("#task-date");
 const resetButton = document.querySelector("#reset-button");
 const copyLinkButton = document.querySelector("#copy-link-button");
-const syncNowButton = document.querySelector("#sync-now-button");
+const exportButton = document.querySelector("#export-button");
+const importInput = document.querySelector("#import-input");
 const statusMessage = document.querySelector("#status-message");
-const syncStatus = document.querySelector("#sync-status");
 const columnTemplate = document.querySelector("#column-template");
 const cardTemplate = document.querySelector("#card-template");
 
 let state = loadState();
 let draggedTaskId = null;
-let syncTimer = null;
-let syncInFlight = false;
-let lastRemoteUpdatedAt = state.updatedAt || "";
 
 render();
-updateSyncStatus();
-startSync();
 
 formElement.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -98,18 +91,38 @@ copyLinkButton.addEventListener("click", async () => {
   }
 });
 
-syncNowButton.addEventListener("click", async () => {
-  if (!isSyncEnabled()) {
-    updateSyncStatus("Sync not configured yet. Add your backend values in sync-config.js.");
+exportButton.addEventListener("click", () => {
+  const fileContents = JSON.stringify(state, null, 2);
+  const blob = new Blob([fileContents], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `project-tracker-board-${new Date().toISOString().slice(0, 10)}.json`;
+  link.click();
+
+  URL.revokeObjectURL(url);
+  setStatus("Board exported. Import that file on another device to restore everything.");
+});
+
+importInput.addEventListener("change", async (event) => {
+  const [file] = event.target.files || [];
+
+  if (!file) {
     return;
   }
 
-  await syncBoard({ reason: "manual" });
-});
-
-window.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && isSyncEnabled()) {
-    syncBoard({ reason: "visible" });
+  try {
+    const fileContents = await file.text();
+    const importedState = normalizeState(JSON.parse(fileContents));
+    state = importedState;
+    saveState();
+    render();
+    setStatus("Board imported.");
+  } catch {
+    setStatus("That file could not be imported.");
+  } finally {
+    importInput.value = "";
   }
 });
 
@@ -231,10 +244,10 @@ function wireDropzone(dropzone, columnId) {
 }
 
 function persistAndRender(message) {
+  state.updatedAt = new Date().toISOString();
   saveState();
   render();
   setStatus(message);
-  queueSync();
 }
 
 function saveState() {
@@ -369,154 +382,4 @@ function makeBoardState(tasks) {
     tasks,
     updatedAt: new Date().toISOString()
   };
-}
-
-function isSyncEnabled() {
-  return Boolean(
-    SYNC_CONFIG.enabled &&
-      SYNC_CONFIG.supabaseUrl &&
-      SYNC_CONFIG.supabaseAnonKey &&
-      SYNC_CONFIG.boardId
-  );
-}
-
-function queueSync() {
-  state.updatedAt = new Date().toISOString();
-  saveState();
-
-  if (!isSyncEnabled()) {
-    updateSyncStatus("Local mode only. Add backend settings in sync-config.js to enable auto sync.");
-    return;
-  }
-
-  window.clearTimeout(syncTimer);
-  syncTimer = window.setTimeout(() => {
-    syncBoard({ reason: "auto" });
-  }, 800);
-}
-
-function startSync() {
-  if (!isSyncEnabled()) {
-    updateSyncStatus("Local mode only. Add backend settings in sync-config.js to enable auto sync.");
-    return;
-  }
-
-  updateSyncStatus("Sync is configured. Checking for the latest board...");
-  syncBoard({ reason: "startup" });
-  window.setInterval(() => {
-    syncBoard({ reason: "poll" });
-  }, SYNC_POLL_INTERVAL_MS);
-}
-
-async function syncBoard({ reason }) {
-  if (!isSyncEnabled() || syncInFlight) {
-    return;
-  }
-
-  syncInFlight = true;
-  syncNowButton.disabled = true;
-  updateSyncStatus(reason === "manual" ? "Syncing now..." : "Checking for updates...");
-
-  try {
-    const remoteRecord = await fetchRemoteBoard();
-
-    if (!remoteRecord) {
-      await pushRemoteBoard();
-      lastRemoteUpdatedAt = state.updatedAt;
-      updateSyncStatus(`Sync is on. Board uploaded ${formatSyncTime(new Date())}.`);
-      return;
-    }
-
-    const remoteUpdatedAt = remoteRecord.updated_at || "";
-    const remoteBoard = normalizeState(remoteRecord.board || {});
-
-    if (remoteUpdatedAt > (state.updatedAt || "")) {
-      state = remoteBoard;
-      lastRemoteUpdatedAt = remoteUpdatedAt;
-      saveState();
-      render();
-      updateSyncStatus(`Pulled newer changes ${formatSyncTime(new Date(remoteUpdatedAt))}.`);
-      return;
-    }
-
-    if ((state.updatedAt || "") > remoteUpdatedAt || !boardsMatch(remoteBoard, state)) {
-      await pushRemoteBoard();
-      lastRemoteUpdatedAt = state.updatedAt;
-      updateSyncStatus(`Changes synced ${formatSyncTime(new Date())}.`);
-      return;
-    }
-
-    lastRemoteUpdatedAt = remoteUpdatedAt;
-    updateSyncStatus(
-      `Everything is synced${lastRemoteUpdatedAt ? ` as of ${formatSyncTime(new Date(lastRemoteUpdatedAt))}` : "."}`
-    );
-  } catch (error) {
-    updateSyncStatus(`Sync issue: ${error.message}`);
-  } finally {
-    syncInFlight = false;
-    syncNowButton.disabled = false;
-  }
-}
-
-async function fetchRemoteBoard() {
-  const url = new URL(`${SYNC_CONFIG.supabaseUrl}/rest/v1/${SYNC_CONFIG.table || "boards"}`);
-  url.searchParams.set("id", `eq.${SYNC_CONFIG.boardId}`);
-  url.searchParams.set("select", "id,board,updated_at");
-
-  const response = await fetch(url, {
-    headers: createSyncHeaders()
-  });
-
-  if (!response.ok) {
-    throw new Error(`could not load remote board (${response.status})`);
-  }
-
-  const rows = await response.json();
-  return rows[0] || null;
-}
-
-async function pushRemoteBoard() {
-  const response = await fetch(`${SYNC_CONFIG.supabaseUrl}/rest/v1/${SYNC_CONFIG.table || "boards"}`, {
-    method: "POST",
-    headers: {
-      ...createSyncHeaders(),
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates"
-    },
-    body: JSON.stringify([
-      {
-        id: SYNC_CONFIG.boardId,
-        board: state,
-        updated_at: state.updatedAt
-      }
-    ])
-  });
-
-  if (!response.ok) {
-    throw new Error(`could not save remote board (${response.status})`);
-  }
-}
-
-function createSyncHeaders() {
-  return {
-    apikey: SYNC_CONFIG.supabaseAnonKey,
-    Authorization: `Bearer ${SYNC_CONFIG.supabaseAnonKey}`
-  };
-}
-
-function boardsMatch(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function updateSyncStatus(message) {
-  syncStatus.textContent = message || syncStatus.textContent || "Local mode only.";
-}
-
-function formatSyncTime(date) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit"
-  }).format(date);
 }
