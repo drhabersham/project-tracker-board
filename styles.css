@@ -1,0 +1,344 @@
+:root {
+  --bg: #f3efe5;
+  --paper: rgba(255, 252, 244, 0.9);
+  --paper-strong: #fffdf7;
+  --ink: #1f1d1a;
+  --muted: #6a6258;
+  --line: rgba(58, 45, 30, 0.12);
+  --accent: #d36a3d;
+  --accent-deep: #a44d28;
+  --todo: #e8d8ba;
+  --doing: #f2c99d;
+  --done: #b8d5b2;
+  --date-overdue: #d65a44;
+  --date-today: #d9992f;
+  --date-upcoming: #4f8f66;
+  --date-empty: #8a8174;
+  --shadow: 0 20px 45px rgba(92, 67, 36, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(211, 106, 61, 0.22), transparent 28%),
+    radial-gradient(circle at top right, rgba(167, 196, 156, 0.2), transparent 25%),
+    linear-gradient(180deg, #f9f4e7 0%, var(--bg) 100%);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1200px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 1.5rem;
+  align-items: end;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow,
+.column-kicker {
+  margin: 0 0 0.4rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0;
+  font-family: "Instrument Serif", serif;
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  line-height: 0.95;
+  font-weight: 400;
+}
+
+.hero-copy {
+  max-width: 60ch;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.hero-actions,
+.toolbar,
+.column {
+  backdrop-filter: blur(18px);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.hero-actions,
+.toolbar {
+  border-radius: 24px;
+  padding: 1rem;
+}
+
+.hero-actions {
+  display: grid;
+  gap: 0.75rem;
+  align-self: stretch;
+}
+
+.status-message {
+  min-height: 1.25rem;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.task-form {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 0.8fr 0.9fr auto;
+  gap: 0.9rem;
+  align-items: end;
+}
+
+.task-form label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.task-form span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper-strong);
+  padding: 0.9rem 1rem;
+  color: var(--ink);
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid rgba(211, 106, 61, 0.35);
+  outline-offset: 2px;
+}
+
+.primary-button,
+.ghost-button,
+.icon-button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 140ms ease, background-color 140ms ease, opacity 140ms ease;
+}
+
+.primary-button,
+.ghost-button {
+  padding: 0.95rem 1.2rem;
+}
+
+.primary-button {
+  background: var(--accent);
+  color: white;
+}
+
+.ghost-button {
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.primary-button:hover,
+.ghost-button:hover,
+.icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.column {
+  border-radius: 28px;
+  padding: 1rem;
+  min-height: 420px;
+}
+
+.column[data-column="todo"] {
+  background: linear-gradient(180deg, rgba(232, 216, 186, 0.92), rgba(255, 252, 244, 0.9));
+}
+
+.column[data-column="doing"] {
+  background: linear-gradient(180deg, rgba(242, 201, 157, 0.92), rgba(255, 252, 244, 0.9));
+}
+
+.column[data-column="done"] {
+  background: linear-gradient(180deg, rgba(184, 213, 178, 0.95), rgba(255, 252, 244, 0.9));
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.column-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.task-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.9rem;
+}
+
+.column-dropzone {
+  display: grid;
+  gap: 0.85rem;
+  min-height: 330px;
+}
+
+.column-dropzone.is-over {
+  outline: 2px dashed rgba(31, 29, 26, 0.2);
+  outline-offset: 8px;
+  border-radius: 18px;
+}
+
+.task-card {
+  display: grid;
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(58, 45, 30, 0.09);
+  border-radius: 22px;
+  padding: 1rem;
+  box-shadow: 0 10px 25px rgba(92, 67, 36, 0.08);
+}
+
+.task-card:active {
+  cursor: grabbing;
+}
+
+.task-card-copy h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.task-card-copy p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.task-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.date-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.date-field span {
+  font-size: 0.73rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.task-date-input {
+  padding: 0.65rem 0.8rem;
+  border-radius: 14px;
+}
+
+.date-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.date-status-pill[data-tone="overdue"] {
+  background: var(--date-overdue);
+}
+
+.date-status-pill[data-tone="today"] {
+  background: var(--date-today);
+}
+
+.date-status-pill[data-tone="upcoming"] {
+  background: var(--date-upcoming);
+}
+
+.date-status-pill[data-tone="empty"] {
+  background: var(--date-empty);
+}
+
+.date-status-pill[data-tone="done"] {
+  background: var(--done);
+  color: #264030;
+}
+
+.task-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.icon-button {
+  width: 2rem;
+  height: 2rem;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--ink);
+}
+
+.icon-button.danger {
+  color: var(--accent-deep);
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .task-form,
+  .board {
+    grid-template-columns: 1fr;
+  }
+
+  .column {
+    min-height: 300px;
+  }
+}

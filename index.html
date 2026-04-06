@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Tracker Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Simple board tracker</p>
+          <h1>Keep projects moving without the clutter.</h1>
+          <p class="hero-copy">
+            A lightweight board for ideas, active work, and finished tasks.
+            It saves on your device and can generate a share link when you want
+            to open the same board elsewhere.
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <button id="copy-link-button" class="primary-button">
+            Copy share link
+          </button>
+          <button id="reset-button" class="ghost-button">Reset board</button>
+          <p id="status-message" class="status-message" aria-live="polite"></p>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <form id="task-form" class="task-form">
+          <label>
+            <span>Task</span>
+            <input
+              id="task-title"
+              name="title"
+              type="text"
+              maxlength="80"
+              placeholder="Ship landing page"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Details</span>
+            <input
+              id="task-details"
+              name="details"
+              type="text"
+              maxlength="140"
+              placeholder="Refine the mobile layout and publish"
+            />
+          </label>
+
+          <label>
+            <span>Column</span>
+            <select id="task-column" name="column">
+              <option value="todo">To Do</option>
+              <option value="doing">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Due date</span>
+            <input id="task-date" name="date" type="date" />
+          </label>
+
+          <button type="submit" class="primary-button">Add task</button>
+        </form>
+      </section>
+
+      <main id="board" class="board" aria-label="Project tracker board"></main>
+    </div>
+
+    <template id="column-template">
+      <section class="column">
+        <div class="column-header">
+          <div>
+            <p class="column-kicker"></p>
+            <h2></h2>
+          </div>
+          <span class="task-count"></span>
+        </div>
+        <div class="column-dropzone"></div>
+      </section>
+    </template>
+
+    <template id="card-template">
+      <article class="task-card" draggable="true">
+        <div class="task-card-copy">
+          <h3></h3>
+          <p></p>
+        </div>
+        <div class="task-meta">
+          <label class="date-field">
+            <span>Date</span>
+            <input class="task-date-input" type="date" aria-label="Task due date" />
+          </label>
+          <span class="date-status-pill"></span>
+        </div>
+        <div class="task-card-actions">
+          <button class="icon-button" data-action="move-left" aria-label="Move left">
+            ←
+          </button>
+          <button class="icon-button" data-action="move-right" aria-label="Move right">
+            →
+          </button>
+          <button class="icon-button danger" data-action="delete" aria-label="Delete task">
+            ×
+          </button>
+        </div>
+      </article>
+    </template>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
